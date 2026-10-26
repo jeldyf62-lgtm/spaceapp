@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { containerEntrypoints } from "../stage-container-runtime.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -38,7 +39,9 @@ test("public Dockerfile provides native multi-arch core, browser, and redistribu
   );
   assert.match(dockerfile, /await r\.json\(\)/);
   assert.match(dockerfile, /body\.ok !== true/);
-  assert.match(dockerfile, /rotate-owner-setup-token\.mjs/);
+  for (const script of ["reset-owner-password", "rotate-owner-setup-token", "portable-backup", "portable-restore"]) {
+    assert.ok(containerEntrypoints.core.includes(`scripts/${script}.mjs`), `${script} remains in core`);
+  }
   assert.match(dockerfile, /@opencode\/cli@2\.0\.32/);
   assert.doesNotMatch(dockerfile, /@openai\/codex|@google\/gemini-cli|@anthropic-ai\/claude-code|run-deepseek-cli/);
   const installer = await readFile(join(root, "deploy/docker/provider-install.mjs"), "utf8");
@@ -46,6 +49,29 @@ test("public Dockerfile provides native multi-arch core, browser, and redistribu
   assert.match(installer, /Unsupported optional provider/);
   assert.doesNotMatch(dockerfile, /docker\.sock/);
   assert.match(dockerfile, /COPY --from=build --chown=spaceapp:spaceapp \/app\/LICENSE \/app\/NOTICE \/app\/THIRD_PARTY_NOTICES\.md \.\//);
+});
+
+test("runtime-base shares tooling while each service copies only its traced application closure", async () => {
+  const dockerfile = await readFile(join(root, "Dockerfile"), "utf8");
+  const stages = Object.fromEntries(dockerfile.split(/^(?=FROM )/m)
+    .map(stage => [stage.match(/^FROM \S+ AS (\S+)/)?.[1], stage]));
+  for (const directory of ["node_modules", "apps", "packages", "agent-skills"]) {
+    assert.doesNotMatch(stages["runtime-base"], new RegExp(`/app/${directory}(?:\\s|/)`));
+  }
+  for (const target of ["core", "browser", "cli"]) {
+    assert.ok(stages[target].includes(`/opt/spaceapp-runtime/${target}/ ./`));
+  }
+  assert.match(stages.build, /node scripts\/stage-container-runtime\.mjs --output/);
+  assert.match(stages.core, /\/app\/packages\/db\/migrations/);
+  assert.match(stages.core, /\/app\/apps\/web\/dist/);
+  assert.match(stages.core, /sqlite-worker\.py/);
+  assert.match(stages.core, /space-gateway-supervisor\.mjs/);
+  assert.match(stages.core, /compression-worker\.mjs/);
+  assert.match(stages.core, /\/app\/packages\/gateway\/grammars/);
+  assert.match(stages.core, /space-local-embeddings\.py/);
+  assert.match(stages.core, /\/app\/agent-skills/);
+  assert.match(stages.cli, /\/app\/agent-skills/);
+  assert.doesNotMatch(stages.browser, /\/app\/agent-skills|\/app\/apps\/web/);
 });
 
 test("public container images identify their repository and license for GHCR", async () => {
@@ -68,7 +94,7 @@ test("CLI image removes the npm download cache in the same layer as bundled CLI 
 
   assert.match(
     normalizedCliStage,
-    /RUN apt-get update[\s\S]*npm install[\s\S]*@opencode\/cli@2\.0\.32[\s\S]*&& npm cache clean --force/
+    /RUN[\s\S]*apt-get update[\s\S]*npm install[\s\S]*@opencode\/cli@2\.0\.32[\s\S]*&& npm cache clean --force/
   );
   // Pilot F18: agents check their work with python3; the apt lists leave in the same layer.
   assert.match(normalizedCliStage, /apt-get install -y --no-install-recommends python3-minimal\s+&& rm -rf \/var\/lib\/apt\/lists\/\*/);
@@ -95,7 +121,7 @@ test("runtime images patch fixable vulnerabilities in npm's bundled dependencies
 
   assert.match(
     normalizedRuntimeStage,
-    /npm pack --ignore-scripts --no-audit --no-fund --pack-destination \/tmp\/npm-security-patches brace-expansion@5\.0\.12 tar@7\.5\.21 ip-address@10\.7\.4 undici@6\.28\.1 postcss-selector-parser@7\.1\.6/
+    /npm pack --ignore-scripts --no-audit --no-fund --pack-destination \/tmp\/npm-security-patches brace-expansion@5\.0\.12 tar@7\.5\.21 ip-address@10\.7\.4 undici@6\.29\.1 postcss-selector-parser@7\.1\.6/
   );
   assert.match(
     normalizedRuntimeStage,
@@ -115,7 +141,7 @@ test("runtime images patch fixable vulnerabilities in npm's bundled dependencies
   );
   assert.match(
     normalizedRuntimeStage,
-    /tar -xzf \/tmp\/npm-security-patches\/undici-6\.28\.1\.tgz -C \/usr\/local\/lib\/node_modules\/npm\/node_modules\/undici --strip-components=1/
+    /tar -xzf \/tmp\/npm-security-patches\/undici-6\.29\.1\.tgz -C \/usr\/local\/lib\/node_modules\/npm\/node_modules\/undici --strip-components=1/
   );
   assert.match(
     normalizedRuntimeStage,

@@ -20,9 +20,12 @@ const common = {
   logLevel: "warning",
   plugins: [{
     name: "external-dependencies",
+    /** Keep entrypoints and bundled workspaces internal while externalizing installed dependencies. */
     setup(context) {
       const bundled = new Set(["@space/contracts", "@space/db"]);
-      context.onResolve({ filter: /^[^./]/ }, (args) => (bundled.has(args.path) ? undefined : { path: args.path, external: true }));
+      // Windows absolute entrypoints start with a drive letter and also match the bare-specifier filter.
+      context.onResolve({ filter: /^[^./]/ }, (args) => (args.kind === "entry-point" || bundled.has(args.path)
+        ? undefined : { path: args.path, external: true }));
     }
   }]
 };

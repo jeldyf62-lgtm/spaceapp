@@ -316,6 +316,9 @@ npx.cmd --yes run-spaceapp@latest install
 
 ## 📚 Documentation & Deep Dives
 
+- [Container image layout and validation](docs/container-images.md) describes the
+  per-service runtime closures and the Linux checks required for container changes.
+
 - [Getting Started & Installation Guide](https://github.com/oll4com/spaceapp/blob/main/docs/getting-started.md)
 - [CLI Providers, Models & Credential Setup](https://github.com/oll4com/spaceapp/blob/main/docs/cli-providers.md)
 - [Operations, Backup, Restore & Rollback](https://github.com/oll4com/spaceapp/blob/main/docs/operations.md)

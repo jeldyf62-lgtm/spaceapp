@@ -62,7 +62,9 @@ test("launcher-only source and workflow changes cannot trigger the container mat
   assert.match(trigger, /push:[\s\S]*branches:[\s\S]*- main[\s\S]*paths:/);
   assert.match(trigger, /- "packages\/\*\*"/);
   assert.match(trigger, /- "!packages\/run-spaceapp\/\*\*"/);
-  assert.doesNotMatch(trigger, /\.github\/workflows\/containers\.yml/);
+  // Changes to the matrix itself or its deployment generator must exercise the images.
+  assert.match(trigger, /\.github\/workflows\/containers\.yml/);
+  assert.match(trigger, /scripts\/stage-container-runtime\.mjs/);
 });
 
 test("container matrices load each image and enforce the public size budgets", async () => {
@@ -74,6 +76,14 @@ test("container matrices load each image and enforce the public size budgets", a
     assert.match(content, /--target "\$\{\{ matrix\.target \}\}"/);
     assert.match(content, /--image "spaceapp-ci:\$\{\{ matrix\.target \}\}-\$\{\{ matrix\.arch \}\}"/);
   }
+});
+
+test("the container matrix probes the loaded service on each architecture", async () => {
+  const containers = await workflow("containers.yml");
+  assert.match(containers, /node scripts\/container-smoke\.mjs/);
+  assert.match(containers, /--target "\$\{\{ matrix\.target \}\}"/);
+  assert.match(containers, /--image "spaceapp-ci:\$\{\{ matrix\.target \}\}-\$\{\{ matrix\.arch \}\}"/);
+  assert.match(containers, /--platform "linux\/\$\{\{ matrix\.arch \}\}"/);
 });
 
 test("security workflow scans secrets, dependencies, source, images, and emits an SBOM", async () => {

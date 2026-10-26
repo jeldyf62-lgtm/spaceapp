@@ -1,5 +1,5 @@
 import type { CliHostGateway } from "./cli-terminal.js";
-import { CliHostClient, type CliHostIdentity } from "@space/cli-host";
+import { CliHostClient, type CliHostIdentity } from "@space/cli-host/client";
 import { SpaceConflictError, type SpaceStore } from "@space/runtime";
 import { warmMixedProofManifests, type WarmMixedProofProfile, type Pane, type PaneCliSession } from "@space/contracts";
 

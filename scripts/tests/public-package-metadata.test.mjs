@@ -13,6 +13,9 @@ const globalFollowUpCommand =
 const publicTestModules = [
   "publish-npm-candidate.test.mjs",
   "container-image-size-budget.test.mjs",
+  "stage-container-runtime.test.mjs",
+  "prune-opencode-platforms.test.mjs",
+  "container-smoke.test.mjs",
   "mcp-hono-compatibility.test.mjs",
   "portable-backup-restore.test.mjs",
   "published-container-verification.test.mjs",
