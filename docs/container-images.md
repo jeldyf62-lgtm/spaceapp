@@ -16,8 +16,8 @@ Core retains the API, worker, web assets, migrations, SQLite worker, owner tools
 backup/restore tools, Gateway bundles/grammars and its local embedding worker,
 and bundled skills. CLI retains the pane host, native PTY
 addon, credential agent, and skills. Browser retains Browser Host and its own
-workspace/dependency graph, Chromium, fonts, and the Xvfb required by default
-headed sessions. Core's CLI socket client uses `@space/cli-host/client`, which
+workspace/dependency graph, Chromium, and fonts.
+Core's CLI socket client uses `@space/cli-host/client`, which
 does not load the native PTY host.
 
 OpenCode's pinned installer creates a standalone executable by copying or hard
@@ -49,7 +49,11 @@ npm run hygiene:preflight
 The smoke command creates a disposable network, containers, and temporary
 secrets. It publishes no ports and uses no operator state or provider credentials.
 Core must run migrations against pgvector PostgreSQL and return `ok: true` from
-`/readyz`; workflows are disabled for this small-profile startup check. CLI must
+`/readyz`; workflows are disabled for this small-profile startup check. It also
+loads the real worker entrypoint as uid 10001, exercising Temporal's native bridge
+against an isolated loopback port. Only the expected connection refusal passes;
+missing modules and native libraries fail the check. This does not prove workflow
+execution against a running Temporal server. CLI must
 accept a Unix-socket connection. Browser Host must accept a connection against
 the migrated schema, then Chromium must render a headless test page as uid 10001.
 These checks run for every target and architecture in `containers.yml`.

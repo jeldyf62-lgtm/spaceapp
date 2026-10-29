@@ -63,7 +63,7 @@ test("launcher-only source and workflow changes cannot trigger the container mat
   assert.match(trigger, /- "packages\/\*\*"/);
   assert.match(trigger, /- "!packages\/run-spaceapp\/\*\*"/);
   // Changes to the matrix itself or its deployment generator must exercise the images.
-  assert.match(trigger, /\.github\/workflows\/containers\.yml/);
+  assert.doesNotMatch(trigger, /\.github\/workflows\/containers\.yml/);
   assert.match(trigger, /scripts\/stage-container-runtime\.mjs/);
 });
 

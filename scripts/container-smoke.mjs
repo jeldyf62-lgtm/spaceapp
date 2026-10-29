@@ -82,7 +82,7 @@ export async function runContainerSmoke({ target, image, platform }) {
       if (target === "browser") {
         // Browser Host consumes the schema; only core ships the migration executable.
         await docker(["exec", database, "sh", "-ec",
-          'for migration in /migrations/*.sql; do psql -v ON_ERROR_STOP=1 -U spaceapp -d spaceapp -f "$migration"; done']);
+          'for migration in /migrations/*.sql; do psql --single-transaction -v ON_ERROR_STOP=1 -U spaceapp -d spaceapp -f "$migration"; done']);
       }
     }
     await writeFile(join(secrets, "session-secret"), randomBytes(32).toString("hex"));
@@ -120,6 +120,21 @@ export async function runContainerSmoke({ target, image, platform }) {
     }
     if (target === "core") {
       process.stdout.write(`${await docker(["exec", service, "node", "--input-type=module", "-e", probe])}\n`);
+      // Exercise the real worker imports and native Temporal connection without an external server.
+      // Only the expected refusal from the native bridge is accepted; missing modules still fail.
+      const workerProbe = `
+        import assert from 'node:assert/strict';
+        import { TransportError, Runtime } from '@temporalio/worker';
+        try {
+          await assert.rejects(import('./apps/worker/dist/worker.js'), error =>
+            error instanceof TransportError && error.message.includes('kind: ConnectionRefused,'));
+          console.log('Worker entrypoint and Temporal native bridge loaded (isolated connection refused).');
+        } finally {
+          await Runtime.instance().shutdown();
+        }
+      `;
+      process.stdout.write(`${await docker(["exec", "--user", "10001:10001", "--env",
+        "SPACE_TEMPORAL_ADDRESS=127.0.0.1:1", service, "node", "--input-type=module", "-e", workerProbe])}\n`);
     }
     process.stdout.write(`${target} / ${platform}: production entrypoint smoke passed\n`);
   } catch (error) {
