@@ -15,7 +15,7 @@ prebuilds are excluded. Missing required dependencies fail staging.
 Core retains the API, worker, web assets, migrations, SQLite worker, owner tools,
 backup/restore tools, Gateway bundles/grammars and its local embedding worker,
 and bundled skills. CLI retains the pane host, native PTY
-addon, credential agent, and skills. Browser retains Browser Host and its own
+add-on, credential agent, and skills. Browser retains Browser Host and its own
 workspace/dependency graph, Chromium, and fonts.
 Core's CLI socket client uses `@space/cli-host/client`, which
 does not load the native PTY host.
@@ -59,8 +59,11 @@ the migrated schema, then Chromium must render a headless test page as uid 10001
 These checks run for every target and architecture in `containers.yml`.
 
 Record actual image-size output for both architectures before updating the
-measurement comments or choosing tighter margins. The issue's hard limits are
-850 MiB (core), 1350 MiB (browser), and 1000 MiB (CLI). Staged-directory sizes do
+measurement comments or choosing tighter margins. The validation command enforces
+280 MiB (core), 430 MiB (browser), and 260 MiB (CLI). These budgets use the recorded
+pre-refresh measurements plus small margins and must be rechecked after the
+upstream refresh. Issue #64's acceptance ceilings are 850 MiB (core),
+1350 MiB (browser), and 1000 MiB (CLI). Staged-directory sizes do
 not substitute for Docker image measurements. The existing README disk minima
 remain conservative until measured install requirements support a change.
 

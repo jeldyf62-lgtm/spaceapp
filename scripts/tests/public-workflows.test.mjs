@@ -60,11 +60,21 @@ test("launcher-only source and workflow changes cannot trigger the container mat
 
   assert.match(trigger, /pull_request:[\s\S]*paths:/);
   assert.match(trigger, /push:[\s\S]*branches:[\s\S]*- main[\s\S]*paths:/);
-  assert.match(trigger, /- "packages\/\*\*"/);
-  assert.match(trigger, /- "!packages\/run-spaceapp\/\*\*"/);
-  // Changes to the matrix itself or its deployment generator must exercise the images.
+  // Changes to image build scripts and smoke checks must exercise the images.
   assert.doesNotMatch(trigger, /\.github\/workflows\/containers\.yml/);
-  assert.match(trigger, /scripts\/stage-container-runtime\.mjs/);
+  const events = {
+    pull_request: trigger.match(/pull_request:([\s\S]*?)\n  push:/)?.[1] || "",
+    push: trigger.match(/\n  push:([\s\S]*?)\n  workflow_dispatch:/)?.[1] || ""
+  };
+  for (const [event, block] of Object.entries(events)) {
+    assert.match(block, /- "packages\/\*\*"/);
+    assert.match(block, /- "!packages\/run-spaceapp\/\*\*"/);
+    for (const path of ["package.json", "scripts/stage-container-runtime.mjs",
+      "scripts/prune-opencode-platforms.mjs", "scripts/container-smoke.mjs",
+      "scripts/container-image-size-budget.mjs"]) {
+      assert.ok(block.includes(`- "${path}"`), `${event} must trigger for ${path}`);
+    }
+  }
 });
 
 test("container matrices load each image and enforce the public size budgets", async () => {
