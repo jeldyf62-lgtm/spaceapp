@@ -120,15 +120,18 @@ export async function runContainerSmoke({ target, image, platform }) {
     }
     if (target === "core") {
       process.stdout.write(`${await docker(["exec", service, "node", "--input-type=module", "-e", probe])}\n`);
-      // Exercise the real worker imports and native Temporal connection without an external server.
+      // Exercise the workflow module, real worker imports and native connection without an external server.
       // Only the expected refusal from the native bridge is accepted; missing modules still fail.
       const workerProbe = `
         import assert from 'node:assert/strict';
-        import { TransportError, Runtime } from '@temporalio/worker';
+        import { createRequire } from 'node:module';
+        const require = createRequire(new URL('./apps/worker/dist/worker.js', import.meta.url));
+        const { TransportError, Runtime } = require('@temporalio/worker');
         try {
+          await import('./apps/worker/dist/workflows.js');
           await assert.rejects(import('./apps/worker/dist/worker.js'), error =>
             error instanceof TransportError && error.message.includes('kind: ConnectionRefused,'));
-          console.log('Worker entrypoint and Temporal native bridge loaded (isolated connection refused).');
+          console.log('Workflow module, worker entrypoint and Temporal native bridge loaded (isolated connection refused).');
         } finally {
           await Runtime.instance().shutdown();
         }

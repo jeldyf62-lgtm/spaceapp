@@ -50,7 +50,7 @@ The smoke command creates a disposable network, containers, and temporary
 secrets. It publishes no ports and uses no operator state or provider credentials.
 Core must run migrations against pgvector PostgreSQL and return `ok: true` from
 `/readyz`; workflows are disabled for this small-profile startup check. It also
-loads the real worker entrypoint as uid 10001, exercising Temporal's native bridge
+loads the workflow module and real worker entrypoint as uid 10001, exercising Temporal's native bridge
 against an isolated loopback port. Only the expected connection refusal passes;
 missing modules and native libraries fail the check. This does not prove workflow
 execution against a running Temporal server. CLI must
