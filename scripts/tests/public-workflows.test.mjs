@@ -60,9 +60,21 @@ test("launcher-only source and workflow changes cannot trigger the container mat
 
   assert.match(trigger, /pull_request:[\s\S]*paths:/);
   assert.match(trigger, /push:[\s\S]*branches:[\s\S]*- main[\s\S]*paths:/);
-  assert.match(trigger, /- "packages\/\*\*"/);
-  assert.match(trigger, /- "!packages\/run-spaceapp\/\*\*"/);
+  // Changes to image build scripts and smoke checks must exercise the images.
   assert.doesNotMatch(trigger, /\.github\/workflows\/containers\.yml/);
+  const events = {
+    pull_request: trigger.match(/pull_request:([\s\S]*?)\n  push:/)?.[1] || "",
+    push: trigger.match(/\n  push:([\s\S]*?)\n  workflow_dispatch:/)?.[1] || ""
+  };
+  for (const [event, block] of Object.entries(events)) {
+    assert.match(block, /- "packages\/\*\*"/);
+    assert.match(block, /- "!packages\/run-spaceapp\/\*\*"/);
+    for (const path of ["package.json", "scripts/stage-container-runtime.mjs",
+      "scripts/prune-opencode-platforms.mjs", "scripts/container-smoke.mjs",
+      "scripts/container-image-size-budget.mjs"]) {
+      assert.ok(block.includes(`- "${path}"`), `${event} must trigger for ${path}`);
+    }
+  }
 });
 
 test("container matrices load each image and enforce the public size budgets", async () => {
@@ -74,6 +86,14 @@ test("container matrices load each image and enforce the public size budgets", a
     assert.match(content, /--target "\$\{\{ matrix\.target \}\}"/);
     assert.match(content, /--image "spaceapp-ci:\$\{\{ matrix\.target \}\}-\$\{\{ matrix\.arch \}\}"/);
   }
+});
+
+test("the container matrix probes the loaded service on each architecture", async () => {
+  const containers = await workflow("containers.yml");
+  assert.match(containers, /node scripts\/container-smoke\.mjs/);
+  assert.match(containers, /--target "\$\{\{ matrix\.target \}\}"/);
+  assert.match(containers, /--image "spaceapp-ci:\$\{\{ matrix\.target \}\}-\$\{\{ matrix\.arch \}\}"/);
+  assert.match(containers, /--platform "linux\/\$\{\{ matrix\.arch \}\}"/);
 });
 
 test("security workflow scans secrets, dependencies, source, images, and emits an SBOM", async () => {

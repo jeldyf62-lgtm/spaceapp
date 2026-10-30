@@ -7,11 +7,11 @@ import {
 
 const mebibyte = 1024 * 1024;
 
-test("public container size budgets preserve the lightweight release ceilings", () => {
+test("public container size budgets preserve the measured per-service margins", () => {
   assert.deepEqual(containerImageSizeBudgets, {
-    core: 1150 * mebibyte,
-    browser: 1750 * mebibyte,
-    cli: 2800 * mebibyte
+    core: 280 * mebibyte,
+    browser: 430 * mebibyte,
+    cli: 260 * mebibyte
   });
 });
 
